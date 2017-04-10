@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdint.h>
 #include "danhash.h"
 
 /* Default hash function 
@@ -9,9 +10,9 @@
    The "Jenkins One-at-a-time hash", from an article by Bob Jenkins in Dr. Dobb's September 1997.
 
 */
-unsigned long hash(char *key)
+uint32_t hash(char *key)
 {
-    unsigned long hash, i;
+    uint32_t hash, i;
     size_t len = strlen(key);
     for(hash = i = 0; i < len; ++i)
     {
@@ -25,7 +26,8 @@ unsigned long hash(char *key)
     return hash;
 }
 
-unsigned int getBucketIndex(struct Dictionary * dict, char * key)
+
+uint32_t getBucketIndex(struct Dictionary * dict, char * key)
 {
   return ((*(dict->hash_function))(key) % dict->size);
 }
@@ -33,14 +35,15 @@ unsigned int getBucketIndex(struct Dictionary * dict, char * key)
 /*  Initializes a dictionary
 
 */
-struct Dictionary * init_danhash(unsigned int size, unsigned long (*hash_function)(char * key)) {
+struct Dictionary * init_danhash(uint32_t size, uint32_t (*hash_function)(char * key)) {
   struct Dictionary * newDict;
-  int i;
+  uint32_t i;
 
   /* Initialize table struct */
   newDict = malloc(sizeof(struct Dictionary));
   newDict->size = size;
   newDict->elements = 0;
+  
   // If no hash function supplied then attach default
   if (hash_function == NULL) {
     newDict->hash_function = &hash;
@@ -62,13 +65,13 @@ struct Dictionary * init_danhash(unsigned int size, unsigned long (*hash_functio
 }
 
 /* Doubles the size of the Dictionary  */
-int expand_dictionary(struct Dictionary * dict) {
+void expand_dictionary(struct Dictionary * dict) {
 
   /* Define a new table of double size */
   struct Entry ** newTable = malloc(dict->size * 2 * sizeof(struct Entry));
 
   /* Store reference to old table and size */
-  int old_size = dict->size;
+  uint32_t old_size = dict->size;
   struct Entry ** oldTable = dict->table;
 
   /* Point to new table, set new size, reset elements and rehash every item from old table */
@@ -76,7 +79,7 @@ int expand_dictionary(struct Dictionary * dict) {
   dict->size = old_size*2;
   dict->elements = 0;
 
-  int i;
+  uint32_t i;
   struct Entry * entry, * oldEntry;
   for (i = 0; i < old_size; i++) {
     entry = *(oldTable+i);
@@ -87,73 +90,64 @@ int expand_dictionary(struct Dictionary * dict) {
       free(oldEntry);
     }
   }
-
-  return 0;
-
 }
 
 /* Inserts a KV pair
 
    Duplicates get value replaced
    Entries added to head of list
-   Added entries can be freed with rem
 
 */
-int add_danhash(struct Dictionary * dict, char * key, char * value)
+void add_danhash(struct Dictionary * dict, char * key, char * value)
 {
-  unsigned int bucketIndex = getBucketIndex(dict, key);
+  uint32_t bucketIndex = getBucketIndex(dict, key);
   struct Entry * newEntry;
-  struct Entry * existingEntry;
+  char * currentValue;
 
-  existingEntry = get_danhash(dict, key);
+  currentValue = get_danhash(dict, key);
 
-  if (existingEntry == NULL) {
-
-    newEntry = malloc(sizeof(struct Entry));
-    newEntry->key = strdup(key);
-    newEntry->value = strdup(value);
-
-    if (*(dict->table+bucketIndex)==NULL) {
-      newEntry->next = NULL;
-    }else{
-      // Because we're prepending, we want the next 
-      // entry to point to the start of the current list
-      newEntry->next = *(dict->table+bucketIndex);
-    }
-
-    *(dict->table+bucketIndex) = newEntry;
-    dict->elements++;
-
-    /* If load factor exceeds optimal range expand Dictionary */
-    if (((double)dict->elements/dict->size) > 0.75) {
-      expand_dictionary(dict);
-    }
-
-  }else{
- 
-    int new_value_length = strlen(value);
-    free(existingEntry->value);
-    existingEntry->value = malloc(sizeof(char) * new_value_length + 1);
-    strncpy(existingEntry->value, value, new_value_length + 1);
-  
+  if (currentValue != NULL) {
+    rem_danhash(dict, key);
   }
 
-  return 0;
+  newEntry = malloc(sizeof(struct Entry));
+  newEntry->key = strdup(key);
+  newEntry->value = strdup(value);
+
+  if (*(dict->table+bucketIndex)==NULL) {
+    newEntry->next = NULL;
+  }else{
+    // Because we're prepending, we want the next 
+    // entry to point to the start of the current list
+    newEntry->next = *(dict->table+bucketIndex);
+  }
+
+  *(dict->table+bucketIndex) = newEntry;
+  dict->elements++;
+
+  /* If load factor exceeds optimal range expand Dictionary */
+  if (((double)dict->elements/dict->size) > 0.75) {
+    expand_dictionary(dict);
+  }
+
 }
 
-/* Get an entry 
+/* Get an entry value 
+
+   Caller needs to free the returned string themselves
 
 */ 
-struct Entry * get_danhash(struct Dictionary * dict, char * key)
+char * get_danhash(struct Dictionary * dict, char * key)
 {
-  struct Entry * result = NULL;
-  unsigned int bucketIndex = getBucketIndex(dict, key);
+  char * result = NULL;
+  uint32_t bucketIndex = getBucketIndex(dict, key);
   struct Entry * entry;
 
   for (entry=*(dict->table+bucketIndex); entry!= NULL; entry = entry->next){
     if (strcmp(entry->key, key)==0) {
-      result = malloc(sizeof(struct Entry));
-      memcpy(result, entry, sizeof(struct Entry));
+      size_t value_length = strlen(key);
+      result = malloc(sizeof(char) * value_length + 1);
+      strncpy(result, entry->value, value_length + 1);
       break;
     }
   }
@@ -168,12 +162,12 @@ Removes an entry
 
 */
 int rem_danhash(struct Dictionary * dict, char * key) {
-  unsigned int bucketIndex = getBucketIndex(dict, key);
+  uint32_t bucketIndex = getBucketIndex(dict, key);
   struct Entry ** entry = &(*(dict->table+bucketIndex));
   struct Entry * removed;
 
   // The Bucket is completely empty
-  if (*entry == NULL) return 0;
+  if (*entry == NULL) return -1;
 
   do {
     // If keys match remove and free
@@ -199,7 +193,7 @@ int rem_danhash(struct Dictionary * dict, char * key) {
 
 */
 void print_danhash(struct Dictionary * dict) {
-  unsigned int i;
+  uint32_t i;
   struct Entry * entry;
   for (i = 0; i < (dict->size); i++) {
     entry = *(dict->table+i);

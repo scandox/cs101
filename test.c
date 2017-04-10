@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <stdint.h>
 #include "danhash.h"
 
 int main()
@@ -41,9 +42,9 @@ int main()
   puts("Successfully Added 1,000,000 records");
 
   // Get an entry we know exists
-  struct Entry * s = get_danhash(dandict, "imoce@fehmomhow.net");
+  char * s = get_danhash(dandict, "imoce@fehmomhow.net");
   assert(s != NULL);
-  char * offer = strdup(s->value);
+  char * offer = strdup(s);
   free(s);
 
   puts("Successfully retrieved a value");
@@ -54,7 +55,7 @@ int main()
   // Ensure duplicate has replaced value
   s = get_danhash(dandict, "ziwhub@ba.net");
   assert(s != NULL);
-  assert(strcmp(s->value, "new value")==0);
+  assert(strcmp(s, "new value")==0);
 
   puts("Successfully added duplicate");
 
