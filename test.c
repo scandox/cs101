@@ -14,7 +14,7 @@ int main()
   
   // Start the dictionary at a too small size so we test the
   // hashtable expansion feature
-  struct Dictionary * dandict = init_danhash(50000);
+  struct Dictionary * dandict = init_danhash(50000, NULL);
   char * key, * value;
   
   // Open test data file
@@ -47,6 +47,16 @@ int main()
   free(s);
 
   puts("Successfully retrieved a value");
+
+  // Add duplicate entry
+  add_danhash(dandict, "ziwhub@ba.net", "new value");
+
+  // Ensure duplicate has replaced value
+  s = get_danhash(dandict, "ziwhub@ba.net");
+  assert(s != NULL);
+  assert(strcmp(s->value, "new value")==0);
+
+  puts("Successfully added duplicate");
 
   // Remove that entry
   rem_danhash(dandict, "ziwhub@ba.net");

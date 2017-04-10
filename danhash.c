@@ -4,6 +4,11 @@
 #include <string.h>
 #include "danhash.h"
 
+/* Default hash function 
+
+   The "Jenkins One-at-a-time hash", from an article by Bob Jenkins in Dr. Dobb's September 1997.
+
+*/
 unsigned long hash(char *key)
 {
     unsigned long hash, i;
@@ -20,15 +25,15 @@ unsigned long hash(char *key)
     return hash;
 }
 
-unsigned int getBucketIndex(unsigned int table_size, char * key)
+unsigned int getBucketIndex(struct Dictionary * dict, char * key)
 {
-  return (hash(key)%table_size);
+  return ((*(dict->hash_function))(key) % dict->size);
 }
 
 /*  Initializes a dictionary
 
 */
-struct Dictionary * init_danhash(unsigned int size) {
+struct Dictionary * init_danhash(unsigned int size, unsigned long (*hash_function)(char * key)) {
   struct Dictionary * newDict;
   int i;
 
@@ -36,6 +41,12 @@ struct Dictionary * init_danhash(unsigned int size) {
   newDict = malloc(sizeof(struct Dictionary));
   newDict->size = size;
   newDict->elements = 0;
+  // If no hash function supplied then attach default
+  if (hash_function == NULL) {
+    newDict->hash_function = &hash;
+  }else{
+    newDict->hash_function = hash_function;
+  }
 
   /* Initialize memory for size items */
   newDict->table = malloc(size * sizeof(struct Entry));
@@ -90,9 +101,9 @@ int expand_dictionary(struct Dictionary * dict) {
 */
 int add_danhash(struct Dictionary * dict, char * key, char * value)
 {
-  unsigned int bucketIndex = getBucketIndex(dict->size, key);
+  unsigned int bucketIndex = getBucketIndex(dict, key);
   struct Entry * newEntry;
-  struct Entry * existingEntry=NULL;
+  struct Entry * existingEntry;
 
   existingEntry = get_danhash(dict, key);
 
@@ -119,10 +130,11 @@ int add_danhash(struct Dictionary * dict, char * key, char * value)
     }
 
   }else{
-  
+ 
+    int new_value_length = strlen(value);
     free(existingEntry->value);
-    existingEntry->value = malloc(sizeof(char) * strlen(value));
-    strncpy(existingEntry->value, value, strlen(value));
+    existingEntry->value = malloc(sizeof(char) * new_value_length + 1);
+    strncpy(existingEntry->value, value, new_value_length + 1);
   
   }
 
@@ -135,7 +147,7 @@ int add_danhash(struct Dictionary * dict, char * key, char * value)
 struct Entry * get_danhash(struct Dictionary * dict, char * key)
 {
   struct Entry * result = NULL;
-  unsigned int bucketIndex = getBucketIndex(dict->size, key);
+  unsigned int bucketIndex = getBucketIndex(dict, key);
   struct Entry * entry;
 
   for (entry=*(dict->table+bucketIndex); entry!= NULL; entry = entry->next){
@@ -156,7 +168,7 @@ Removes an entry
 
 */
 int rem_danhash(struct Dictionary * dict, char * key) {
-  unsigned int bucketIndex = getBucketIndex(dict->size, key);
+  unsigned int bucketIndex = getBucketIndex(dict, key);
   struct Entry ** entry = &(*(dict->table+bucketIndex));
   struct Entry * removed;
 
