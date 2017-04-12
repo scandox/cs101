@@ -1,11 +1,17 @@
 #include <stdint.h>
 
+/*  An Entry in dictionary
+
+*/
 struct Entry {
   char * key;
   char * value;
   struct Entry * next; 
 };
 
+/*  A dictionary containing a table of Entries
+
+*/
 struct Dictionary {
   uint32_t size;
   uint32_t elements;
@@ -17,4 +23,5 @@ struct Dictionary * init_danhash(uint32_t size, uint32_t (*hash_function)(const 
 void add_danhash(struct Dictionary * dict, const char * key, const char * value);
 int rem_danhash(struct Dictionary * dict, const char * key);
 char * get_danhash(struct Dictionary * dict, const char * key);
-struct Entry * iterate_danhash(struct Dictionary * dict);
+void print_danhash(struct Dictionary * dict);
+void destroy_danhash(struct Dictionary * dict);

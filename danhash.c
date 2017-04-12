@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include "danhash.h"
 
+/* PRIVATE FUNCTIONS */
+
 /* Default hash function 
 
    The "Jenkins One-at-a-time hash", from an article by Bob Jenkins in Dr. Dobb's September 1997.
@@ -27,109 +29,125 @@ uint32_t hash(const char *key)
 }
 
 
-uint32_t getBucketIndex(struct Dictionary * dict, const char * key)
+uint32_t get_bucket_index(struct Dictionary * dict, const char * key)
 {
   return ((*(dict->hash_function))(key) % dict->size);
-}
-
-/*  Initializes a dictionary
-
-*/
-struct Dictionary * init_danhash(uint32_t size, uint32_t (*hash_function)(const char * key)) {
-  struct Dictionary * newDict;
-  uint32_t i;
-
-  /* Initialize table struct */
-  newDict = malloc(sizeof(struct Dictionary));
-  newDict->size = size;
-  newDict->elements = 0;
-  
-  // If no hash function supplied then attach default
-  if (hash_function == NULL) {
-    newDict->hash_function = &hash;
-  }else{
-    newDict->hash_function = hash_function;
-  }
-
-  /* Initialize memory for size items */
-  newDict->table = malloc(size * sizeof(struct Entry));
-
-  /* Initialize each head entry with NULL */
-  for (i = 0; i < size; i++) {
-    *(newDict->table+i)=NULL;
-  }
-
-  return newDict;
-
 }
 
 /* Doubles the size of the Dictionary  */
 void expand_dictionary(struct Dictionary * dict) {
 
   /* Define a new table of double size */
-  struct Entry ** newTable = malloc(dict->size * 2 * sizeof(struct Entry));
+  struct Entry ** new_table = malloc(dict->size * 2 * sizeof(struct Entry));
 
   /* Store reference to old table and size */
   uint32_t old_size = dict->size;
-  struct Entry ** oldTable = dict->table;
+  struct Entry ** old_table = dict->table;
 
   /* Point to new table, set new size, reset elements and rehash every item from old table */
-  dict->table = newTable;
+  dict->table = new_table;
   dict->size = old_size*2;
   dict->elements = 0;
+ 
+  /* Initialize each head entry with NULL */
+  for (int i = 0; i < dict->size; i++) {
+    *(dict->table+i) = NULL;
+  }
 
   uint32_t i;
-  struct Entry * entry, * oldEntry;
+  struct Entry * entry, * old_entry;
   for (i = 0; i < old_size; i++) {
-    entry = *(oldTable+i);
+    entry = *(old_table+i);
     while (entry!=NULL) {
       add_danhash(dict, entry->key, entry->value);
-      oldEntry = entry;
+      old_entry = entry;
       entry = entry->next;
 
-      free(oldEntry->value);
-      free(oldEntry->key);
-      free(oldEntry);
+      free(old_entry->value);
+      free(old_entry->key);
+      free(old_entry);
     }
   }
 
-  free(oldTable);
+  free(old_table);
 
 }
 
-/* Inserts a KV pair
+/* PUBLIC API */
 
-   Duplicates get value replaced
-   Entries added to head of list
+/*  Initializes a dictionary
+
+    Call this first. Use a size that is approximately 1.5 X the number of elements
+    you expect to add to the Dictionary
+    
+    Pass resulting dictionary object to each subsequent function call 
+    
+    The hash_function value can be NULL, in which case default hash function
+    is used.
+
+*/
+struct Dictionary * init_danhash(uint32_t size, uint32_t (*hash_function)(const char * key)) {
+  struct Dictionary * new_dict;
+  uint32_t i;
+
+  /* Initialize table struct */
+  new_dict = malloc(sizeof(struct Dictionary));
+  new_dict->size = size;
+  new_dict->elements = 0;
+  
+  // If no hash function supplied then attach default
+  if (hash_function == NULL) {
+    new_dict->hash_function = &hash;
+  }else{
+    new_dict->hash_function = hash_function;
+  }
+
+  /* Initialize memory for size items */
+  new_dict->table = malloc(size * sizeof(struct Entry));
+
+  /* Initialize each head entry with NULL */
+  for (i = 0; i < size; i++) {
+    *(new_dict->table+i) = NULL;
+  }
+
+  return new_dict;
+
+}
+
+/* Inserts a Key-Value pair into the dictionary
+
+   A few notes:
+   *  Duplicate Key means Entry is replaced
+   *  Entries are added to head of list
+   *  When load factor is no longer optimal dictionary size is doubled, this can
+      lead to occasional pauses on insert
 
 */
 void add_danhash(struct Dictionary * dict, const char * key, const char * value)
 {
-  uint32_t bucketIndex = getBucketIndex(dict, key);
-  struct Entry * newEntry;
-  char * currentValue;
+  uint32_t bucket_index = get_bucket_index(dict, key);
+  struct Entry * new_entry;
+  char * current_value = get_danhash(dict, key);
 
-  currentValue = get_danhash(dict, key);
-
-  if (currentValue != NULL) {
+  if (current_value != NULL) {
     rem_danhash(dict, key);
   }
   
-  free(currentValue);
+  free(current_value);
 
-  newEntry = malloc(sizeof(struct Entry));
-  newEntry->key = strdup(key);
-  newEntry->value = strdup(value);
+  new_entry = malloc(sizeof(struct Entry));
+  new_entry->key = strdup(key);
+  new_entry->value = strdup(value);
 
-  if (*(dict->table+bucketIndex)==NULL) {
-    newEntry->next = NULL;
+  if (*(dict->table+bucket_index)==NULL) {
+    new_entry->next = NULL;
   }else{
     // Because we're prepending, we want the next 
     // entry to point to the start of the current list
-    newEntry->next = *(dict->table+bucketIndex);
+    new_entry->next = *(dict->table+bucket_index);
   }
 
-  *(dict->table+bucketIndex) = newEntry;
+  *(dict->table+bucket_index) = new_entry;
   dict->elements++;
 
   /* If load factor exceeds optimal range expand Dictionary */
@@ -139,18 +157,20 @@ void add_danhash(struct Dictionary * dict, const char * key, const char * value)
 
 }
 
-/* Get an entry value 
+/* Get an entry value, corresponding to the supplied Key 
 
-   Caller needs to free the returned string themselves
+   You need to free the value returned. This is still true even if you do
+   call destroy_danhash or rem_danhash on the specific key - i.e. the string
+   returned is a copy independent of the Dict.
 
 */ 
 char * get_danhash(struct Dictionary * dict, const char * key)
 {
   char * result = NULL;
-  uint32_t bucketIndex = getBucketIndex(dict, key);
+  uint32_t bucket_index = get_bucket_index(dict, key);
   struct Entry * entry;
 
-  for (entry=*(dict->table+bucketIndex); entry!= NULL; entry = entry->next){
+  for (entry=*(dict->table+bucket_index); entry!= NULL; entry = entry->next){
     if (strcmp(entry->key, key)==0) {
       size_t value_length = strlen(entry->value);
       result = malloc(sizeof(char) * value_length + 1);
@@ -166,12 +186,14 @@ char * get_danhash(struct Dictionary * dict, const char * key)
 Removes an entry 
 
    Removes item from linked list and frees entry
+   Returns -1 if the Entry does not exist
+   Returns 0 if successfully removed
 
 */
 int rem_danhash(struct Dictionary * dict, const char * key) {
-  uint32_t bucketIndex = getBucketIndex(dict, key);
-  struct Entry ** entry = &(*(dict->table+bucketIndex));
-  struct Entry * removed;
+  uint32_t bucket_index = get_bucket_index(dict, key);
+  struct Entry ** entry = &(*(dict->table+bucket_index));
+  struct Entry * removed = NULL;
 
   // The Bucket is completely empty
   if (*entry == NULL) return -1;
@@ -196,15 +218,22 @@ int rem_danhash(struct Dictionary * dict, const char * key) {
     // If it's NULL quit
   } while(*entry!=NULL); 
 
-  return 0;
+  return (removed==NULL) ? -1 : 0;
 }
 
-/* Outputs a basic representation of Hashtable contents 
+/* Prints a textual representation of Hashtable contents 
 
+   Entries are printed something like:
+
+   Bucket 1: [ key, value ] -> [ key1, value1 ]
+   ...
+ 
 */
 void print_danhash(struct Dictionary * dict) {
+  
   uint32_t i;
   struct Entry * entry;
+  
   for (i = 0; i < (dict->size); i++) {
     entry = *(dict->table+i);
     printf("Bucket %d: ", i);
@@ -214,4 +243,29 @@ void print_danhash(struct Dictionary * dict) {
     }
     printf("\n");
   }
+
+}
+
+/*  Removes and frees all entries and cleans up Dictonary object
+
+    Always call this when you're finished with Dictionary
+
+*/
+void destroy_danhash(struct Dictionary * dict) {
+  
+  uint32_t i;
+  struct Entry * entry, * remove;
+  
+  for (i = 0; i < (dict->size); i++) {
+    entry = *(dict->table+i);
+    while(entry != NULL) {
+      remove = entry;
+      entry = entry->next;
+      rem_danhash(dict, remove->key);
+    }
+  }
+  
+  free(dict->table);
+  free(dict);
+
 }

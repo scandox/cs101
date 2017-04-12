@@ -2,22 +2,20 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include <stdint.h>
-#include <unistd.h>
 #include "danhash.h"
 
 int main()
 {
 
-    char c;
+  char c;
   char line[100];
   int i = 0;
   FILE * f;
-  
+   
   // Start the dictionary at an arbitrary size
-  struct Dictionary * dandict = init_danhash(5, NULL);
+  struct Dictionary * dandict = init_danhash(50000, NULL);
   char * key, * value;
-  
+ 
   // Open test data file
   f = fopen("relatively-big-data.csv", "r");
   if (f==NULL) {
@@ -38,9 +36,8 @@ int main()
       i++;
     }
   }
+  fclose(f);
   puts("Successfully Added 1,000,000 records");
-
-  free(f);
 
   // Get an entry we know exists
   char * s = get_danhash(dandict, "imoce@fehmomhow.net");
@@ -62,29 +59,21 @@ int main()
   puts("Successfully added duplicate");
 
   // Remove that entry
-  rem_danhash(dandict, "ziwhub@ba.net");
- 
+  int removed = rem_danhash(dandict, "ziwhub@ba.net");
+  assert(removed==0); 
+
   // Try getting that entry again
   s = get_danhash(dandict, "ziwhub@ba.net");
   assert(s == NULL);
-  free(s);
-
   puts("Successfully removed a value");
 
+  // Try removing a value we know doesn't exist
+  removed = rem_danhash(dandict, "Macavity");
+  assert(removed==-1);
+
+  // Make offer
   puts(offer);
   free(offer);
 
-  struct Entry * entry, * remove;
-  for (i = 0; i < (dandict->size); i++) {
-    entry = *(dandict->table+i);
-    while(entry != NULL) {
-      remove = entry;
-      entry = entry->next;
-      rem_danhash(dandict, remove->key);
-    }
-  }
-
-  free(dandict->table);
-  free(dandict);
-
+  destroy_danhash(dandict);
 }
