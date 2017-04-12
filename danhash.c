@@ -127,7 +127,10 @@ void add_danhash(struct Dictionary * dict, const char * key, const char * value)
 {
   uint32_t bucket_index = get_bucket_index(dict, key);
   struct Entry * new_entry;
+  size_t value_length = strlen(value);
+  size_t key_length = strlen(key);
   char * current_value = get_danhash(dict, key);
+
 
   if (current_value != NULL) {
     rem_danhash(dict, key);
@@ -136,8 +139,10 @@ void add_danhash(struct Dictionary * dict, const char * key, const char * value)
   free(current_value);
 
   new_entry = malloc(sizeof(struct Entry));
-  new_entry->key = strdup(key);
-  new_entry->value = strdup(value);
+  new_entry->key = malloc(sizeof(char) * key_length + 1);
+  new_entry->value = malloc(sizeof(char) * value_length + 1);
+  strncpy(new_entry->key, key, key_length + 1); 
+  strncpy(new_entry->value, value, value_length + 1);
 
   if (*(dict->table+bucket_index)==NULL) {
     new_entry->next = NULL;

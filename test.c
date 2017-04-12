@@ -42,7 +42,8 @@ int main()
   // Get an entry we know exists
   char * s = get_danhash(dandict, "imoce@fehmomhow.net");
   assert(s != NULL);
-  char * offer = strdup(s);
+  char * offer = malloc(sizeof(char) * strlen(s) + 1);
+  strncpy(offer, s, strlen(s) + 1);
   free(s);
 
   puts("Successfully retrieved a value");
