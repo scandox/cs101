@@ -10,7 +10,7 @@
    The "Jenkins One-at-a-time hash", from an article by Bob Jenkins in Dr. Dobb's September 1997.
 
 */
-uint32_t hash(char *key)
+uint32_t hash(const char *key)
 {
     uint32_t hash, i;
     size_t len = strlen(key);
@@ -27,7 +27,7 @@ uint32_t hash(char *key)
 }
 
 
-uint32_t getBucketIndex(struct Dictionary * dict, char * key)
+uint32_t getBucketIndex(struct Dictionary * dict, const char * key)
 {
   return ((*(dict->hash_function))(key) % dict->size);
 }
@@ -35,7 +35,7 @@ uint32_t getBucketIndex(struct Dictionary * dict, char * key)
 /*  Initializes a dictionary
 
 */
-struct Dictionary * init_danhash(uint32_t size, uint32_t (*hash_function)(char * key)) {
+struct Dictionary * init_danhash(uint32_t size, uint32_t (*hash_function)(const char * key)) {
   struct Dictionary * newDict;
   uint32_t i;
 
@@ -56,8 +56,7 @@ struct Dictionary * init_danhash(uint32_t size, uint32_t (*hash_function)(char *
 
   /* Initialize each head entry with NULL */
   for (i = 0; i < size; i++) {
-    *(newDict->table)=NULL;
-    (newDict->table)++;
+    *(newDict->table+i)=NULL;
   }
 
   return newDict;
@@ -87,9 +86,15 @@ void expand_dictionary(struct Dictionary * dict) {
       add_danhash(dict, entry->key, entry->value);
       oldEntry = entry;
       entry = entry->next;
+
+      free(oldEntry->value);
+      free(oldEntry->key);
       free(oldEntry);
     }
   }
+
+  free(oldTable);
+
 }
 
 /* Inserts a KV pair
@@ -98,7 +103,7 @@ void expand_dictionary(struct Dictionary * dict) {
    Entries added to head of list
 
 */
-void add_danhash(struct Dictionary * dict, char * key, char * value)
+void add_danhash(struct Dictionary * dict, const char * key, const char * value)
 {
   uint32_t bucketIndex = getBucketIndex(dict, key);
   struct Entry * newEntry;
@@ -109,6 +114,8 @@ void add_danhash(struct Dictionary * dict, char * key, char * value)
   if (currentValue != NULL) {
     rem_danhash(dict, key);
   }
+  
+  free(currentValue);
 
   newEntry = malloc(sizeof(struct Entry));
   newEntry->key = strdup(key);
@@ -137,7 +144,7 @@ void add_danhash(struct Dictionary * dict, char * key, char * value)
    Caller needs to free the returned string themselves
 
 */ 
-char * get_danhash(struct Dictionary * dict, char * key)
+char * get_danhash(struct Dictionary * dict, const char * key)
 {
   char * result = NULL;
   uint32_t bucketIndex = getBucketIndex(dict, key);
@@ -145,7 +152,7 @@ char * get_danhash(struct Dictionary * dict, char * key)
 
   for (entry=*(dict->table+bucketIndex); entry!= NULL; entry = entry->next){
     if (strcmp(entry->key, key)==0) {
-      size_t value_length = strlen(key);
+      size_t value_length = strlen(entry->value);
       result = malloc(sizeof(char) * value_length + 1);
       strncpy(result, entry->value, value_length + 1);
       break;
@@ -161,7 +168,7 @@ Removes an entry
    Removes item from linked list and frees entry
 
 */
-int rem_danhash(struct Dictionary * dict, char * key) {
+int rem_danhash(struct Dictionary * dict, const char * key) {
   uint32_t bucketIndex = getBucketIndex(dict, key);
   struct Entry ** entry = &(*(dict->table+bucketIndex));
   struct Entry * removed;
@@ -170,10 +177,14 @@ int rem_danhash(struct Dictionary * dict, char * key) {
   if (*entry == NULL) return -1;
 
   do {
+    
     // If keys match remove and free
     if (strcmp((*entry)->key, key)==0) {
       removed = *entry;
       *entry = (*entry)->next;
+
+      free(removed->value);
+      free(removed->key);
       free(removed);
       dict->elements--;
       break;
@@ -187,7 +198,6 @@ int rem_danhash(struct Dictionary * dict, char * key) {
 
   return 0;
 }
-
 
 /* Outputs a basic representation of Hashtable contents 
 
