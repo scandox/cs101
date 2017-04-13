@@ -5,9 +5,7 @@
 
 int main() {
 
-  struct Stack * rev_stack = init_stack();
-  struct Stack * nest_stack = init_stack();
-  char * sample = "Now is the winter of our discontent \
+ char * sample = "Now is the winter of our discontent \
 Made glorious summer (by this sun of York); \
 And all the clouds that lour'd upon our house  \
 In the deep bosom of the ocean <buried>. \
@@ -38,6 +36,8 @@ And therefore, since I cannot prove a lover,  \
 To entertain these fair well-spoken days, \
 I am determined to prove a villain \
 And hate the idle pleasures of these days."; 
+  struct Stack * rev_stack = init_stack();
+  struct Stack * nest_stack = init_stack();
   char c,p;
   int i = 0;
 

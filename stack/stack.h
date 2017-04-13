@@ -1,5 +1,3 @@
-#include <stdbool.h>
-
 struct Stack {
   char * items;
   int size;
