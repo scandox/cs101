@@ -24,4 +24,4 @@ if (value!=NULL) {
 destroy_danhash(mydict);
 ```
 
-It also supports removal of individual items by key and can print out a textual representation of dictionary contents.  `test.c` shows various operations.
+It also supports removal of individual items by key and can print out a textual representation of dictionary contents.  `test.c` shows various operations. Oh and you can plugin your own hash function too by passing a pointer to an appropriate function in the `init_danhash` function. 
