@@ -45,6 +45,8 @@ void rem_item(struct List * list, struct ListItem * list_item) {
   }
 
   (*head) = list_item->next;
+  free(list_item->item);
+  free(list_item);
   list->length--;
 
 }
