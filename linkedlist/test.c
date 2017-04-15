@@ -1,14 +1,19 @@
+#include <stdlib.h>
+#include <stdio.h>
 #include "linkedlist.h"
 
 int main() {
   struct List * my_list = init_list();
-  struct ListItem * item1, * item2, * item3;
+  struct ListItem * item, * item1, * item2, * item3;
   
   item1 = add_item(my_list, "One");
   item2 = add_item(my_list, "Two");
-  item3 = add_item(my_list, "three");
+  item3 = add_item(my_list, "Three");
 
-  print_list(my_list);
+  // Walk the list
+  for (item = my_list->head; item!=NULL; item=item->next) {
+    puts(item->item);
+  }
 
   rem_item(my_list, item1);
   rem_item(my_list, item2);

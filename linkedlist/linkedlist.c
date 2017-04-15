@@ -9,25 +9,29 @@
 struct List * init_list() {
   
   struct List * list = malloc(sizeof(struct List));
-  list->next = NULL;
+  list->head = NULL;
   list->length = 0;
   return list;
 
 }
 
-/* Prepends item to list
+/* Appends item to list
 
 */
 struct ListItem * add_item(struct List * list, char * item) {
   
   size_t item_length = strlen(item);
   struct ListItem * list_item = malloc(sizeof(struct ListItem));
-  
-  list_item->next=list->next;
+
+  list_item->next=NULL;
   list_item->item = malloc(sizeof(char) * item_length + 1);
   strncpy(list_item->item, item, item_length + 1);
 
-  list->next = list_item;
+  struct ListItem ** head = &list->head;
+  while ((*head) != NULL) {
+    head = &((*head)->next);
+  }
+  (*head) = list_item;
   list->length++;
 
   return list_item;
@@ -38,12 +42,17 @@ struct ListItem * add_item(struct List * list, char * item) {
 */
 void rem_item(struct List * list, struct ListItem * list_item) {
 
-  struct ListItem ** head = &list->next;
+  // Pointer to pointer contains address of pointer to first struct
+  struct ListItem ** head = &list->head;
 
+  // Dereferencing head gives us the address of the current struct
   while ((*head) != list_item) {
+    // sets contents of head to address of pointer to next struct
     head = &(*head)->next;
   }
 
+  // Sets the address in the pointer to current struct to be the address of the
+  // next struct instead. We repoint the relevant pointer
   (*head) = list_item->next;
   free(list_item->item);
   free(list_item);
@@ -54,7 +63,7 @@ void rem_item(struct List * list, struct ListItem * list_item) {
 /* Print out the list */
 void print_list(struct List * list) {
  
-  struct ListItem * head = list->next;
+  struct ListItem * head = list->head;
 
   while (head != NULL) {
     printf("%s->", head->item);
@@ -70,7 +79,7 @@ void print_list(struct List * list) {
 */
 void destroy_list(struct List * list) {
    
-  struct ListItem * head = list->next;
+  struct ListItem * head = list->head;
   struct ListItem * remove;
 
   while (head != NULL) {

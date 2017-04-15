@@ -1,6 +1,6 @@
 struct List {
   int length;
-  struct ListItem * next;
+  struct ListItem * head;
 };
 
 struct ListItem {
