@@ -29,7 +29,7 @@ struct ListItem * add_item(struct List * list, char * item) {
 
   struct ListItem ** head = &list->head;
   while ((*head) != NULL) {
-    head = &((*head)->next);
+    head = &(*head)->next;
   }
   (*head) = list_item;
   list->length++;
