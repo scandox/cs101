@@ -10,6 +10,7 @@ struct List * init_list() {
   
   struct List * list = malloc(sizeof(struct List));
   list->head = NULL;
+  list->last = NULL;
   list->length = 0;
   return list;
 
@@ -27,11 +28,12 @@ struct ListItem * add_item(struct List * list, char * item) {
   list_item->item = malloc(sizeof(char) * item_length + 1);
   strncpy(list_item->item, item, item_length + 1);
 
-  struct ListItem ** head = &list->head;
-  while ((*head) != NULL) {
-    head = &(*head)->next;
+  if (list->last == NULL) {
+    list->head = list_item;
+  }else{ 
+    list->last->next = list_item;
   }
-  (*head) = list_item;
+  list->last = list_item;
   list->length++;
 
   return list_item;
@@ -54,6 +56,10 @@ void rem_item(struct List * list, struct ListItem * list_item) {
   // Sets the address in the pointer to current struct to be the address of the
   // next struct instead. We repoint the relevant pointer
   (*head) = list_item->next;
+  
+  // Ensure the last item pointer is still pointing at the last item
+  if (list_item == list->last) list->last = (*head);
+  
   free(list_item->item);
   free(list_item);
   list->length--;

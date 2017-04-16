@@ -1,6 +1,7 @@
 struct List {
   int length;
   struct ListItem * head;
+  struct ListItem * last;
 };
 
 struct ListItem {

@@ -15,9 +15,15 @@ int main() {
     puts(item->item);
   }
 
+  // Remove Items
   rem_item(my_list, item1);
   rem_item(my_list, item2);
   rem_item(my_list, item3);
+
+  // Ensure newly emptied list still works
+  item1 = add_item(my_list, "Four");
+  item2 = add_item(my_list, "Five");
+  item3 = add_item(my_list, "Six");
 
   print_list(my_list);
 
